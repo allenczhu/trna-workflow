@@ -1,0 +1,17 @@
+{
+    "samples_txt": "samples.txt",
+    "output_dirs":{
+        "LOGS_DIR" : "00_LOGS", 
+        "FASTA_DIR" : "01_FASTA", 
+        "BOWTIE_DIR" : "02_BOwTIE", 
+        "BAM_DIR" : "03_BAM", 
+        "ANVI_BAM_DIR" : "04_ANVIBAM", 
+        "CONTIGS_DB_DIR" : "05_CONTIGSDB", 
+        "PROFILE_DIR" : "06_ANVIO_PROFILE", 
+        "MERGED_DIR" : "07_MERGED"
+    }, 
+
+    "anvi_profile":{
+        "min_contig_length" : 0
+    }
+}

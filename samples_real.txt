@@ -1,0 +1,13 @@
+sample	file
+HF-M01 	../db-trna-profiles/tRNA-HF-M01.db
+HF-M02	../db-trna-profiles/tRNA-HF-M02.db
+HF-M03	../db-trna-profiles/tRNA-HF-M03.db
+HF-DM-M01	../db-trna-profiles/tRNA-HF-DM-M01.db
+HF-DM-M02	../db-trna-profiles/tRNA-HF-DM-M02.db
+HF-DM-M03	../db-trna-profiles/tRNA-HF-DM-M03.db
+LF-M01	../db-trna-profiles/tRNA-LF-M01.db
+LF-M02	../db-trna-profiles/tRNA-LF-M02.db
+LF-M03	../db-trna-profiles/tRNA-LF-M03.db
+LF-DM-M01	../db-trna-profiles/tRNA-LF-DM-M01.db
+LF-DM-M02	../db-trna-profiles/tRNA-LF-DM-M02.db
+LF-DM-M03	../db-trna-profiles/tRNA-LF-DM-M03.db
