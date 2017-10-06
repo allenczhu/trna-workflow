@@ -104,7 +104,7 @@ print(expand("hello_{sample}", sample=SAMPLES))
 
 rule all:
     input:
-        expand(dirs_dict["PROFILE_DIR"] + "/anvi_bam_{sample}.bam-ANVIO_PROFILE/PROFILE.db", sample=SAMPLES)
+        expand(dirs_dict["PROFILE_DIR"] + "/{sample}/PROFILE.db", sample=SAMPLES)
         #expand('../workflow_snakemake/anvi_bam_{sample}.bam-ANVIO_PROFILE/PROFILE.db', sample=SAMPLES)
 
 rule db_to_fasta:
@@ -179,7 +179,7 @@ rule anvi_profile:
         #'../workflow_snakemake/anvi_bam_{sample}.bam',
         #'../workflow_snakemake/full_length_reads_{sample}.db'
     output:
-        dirs_dict['PROFILE_DIR'] + '/anvi_bam_{sample}.bam-ANVIO_PROFILE/PROFILE.db'
+        dirs_dict['PROFILE_DIR'] + '/{sample}/PROFILE.db'
         #'../workflow_snakemake/anvi_bam_{sample}.bam-ANVIO_PROFILE/PROFILE.db'
     params:
         min_contig_length = MIN_CONTIG_LENGTH,
