@@ -34,7 +34,7 @@ import pandas as pd
 configfile: "config.json"
 # Setting the names of the directories
 dir_list = ["LOGS_DIR", "FASTA_DIR", "BOWTIE_DIR", "BAM_DIR", "ANVI_BAM_DIR", "CONTIGS_DB_DIR", "PROFILE_DIR", "MERGE_DIR"]
-dir_names = ["00_LOGS", "01_QC", "02_BOWTIE", "03_BAM", "04_ANVIBAM", "05_CONTIGSDB", "06_ANVIO_PROFILE", "07_MERGED"]
+dir_names = ["00_LOGS", "01_FASTA", "02_BOWTIE", "03_BAM", "04_ANVIBAM", "05_CONTIGSDB", "06_ANVIO_PROFILE", "07_MERGED"]
 dirs_dict = dict(zip(dir_list, dir_names))
 
 os.makedirs(dirs_dict["LOGS_DIR"], exist_ok=True)
@@ -104,24 +104,32 @@ print(expand("hello_{sample}", sample=SAMPLES))
 
 rule all:
     input:
-        expand(dirs_dict["PROFILE_DIR"] + "/{sample}/PROFILE.db", sample=SAMPLES)
+        dirs_dict['MERGE_DIR'] + '/PROFILE.db'
+        #expand(dirs_dict["PROFILE_DIR"] + "/{sample}/PROFILE.db", sample=SAMPLES)
         #expand('../workflow_snakemake/anvi_bam_{sample}.bam-ANVIO_PROFILE/PROFILE.db', sample=SAMPLES)
 
 rule db_to_fasta:
     input:
-        expand("{file}", file=FILES)
+        expand("{file}", file=FILES) 
     output:
-        full_length_fasta = dirs_dict["FASTA_DIR"] + '/full_length_reads_{sample}.fa',    
         all_read_fasta = dirs_dict["FASTA_DIR"] + '/all_reads_{sample}.fa'
     shell:
-        'trna-get-sequences -p {input} -o {output.full_length_fasta} --full-length-only; trna-get-sequences -p {input} -o {output.all_read_fasta}'
+        'trna-get-sequences -p {input[0]} -o {output.all_read_fasta}'
+
+rule db_to_ref_fasta:
+    input:
+        full_length_file = FILES[0]
+    output:
+        full_length_ref_fasta = dirs_dict["FASTA_DIR"] + '/full_length_reads.fa' 
+    shell:
+        'trna-get-sequences -p {input} -o {output.full_length_ref_fasta} --full-length-only'   
 
 rule reformat_fasta_for_anvi:
     input:
-        rules.db_to_fasta.output.full_length_fasta
+        rules.db_to_ref_fasta.output.full_length_ref_fasta
         #'../workflow_snakemake/full_length_reads_{sample}.fa'
     output:
-        dirs_dict["FASTA_DIR"] + '/fixed_full_length_reads_{sample}.fa'
+        dirs_dict["FASTA_DIR"] + '/fixed_full_length_ref.fa'
         #'../workflow_snakemake/fixed_full_length_reads_{sample}.fa'
     shell:
         'anvi-script-reformat-fasta {input} -o {output} -l 0 --simplify-names'
@@ -129,7 +137,7 @@ rule reformat_fasta_for_anvi:
 rule bowtie_build_index:
     input:
         rules.reformat_fasta_for_anvi.output, 
-        rules.db_to_fasta.output.all_read_fasta
+        rules.db_to_fasta.output
         #full_length_fasta = '../workflow_snakemake/fixed_full_length_reads_{sample}.fa',
         #all_read_fasta = '../workflow_snakemake/all_reads_{sample}.fa'
     output:
@@ -167,11 +175,20 @@ rule anvi_gen_contigs_db:
         rules.reformat_fasta_for_anvi.output
         #'../workflow_snakemake/fixed_full_length_reads_{sample}.fa'
     output:
-        dirs_dict['CONTIGS_DB_DIR'] + '/full_length_reads_{sample}.db'
+        dirs_dict['CONTIGS_DB_DIR'] + '/full_length_ref_contigs.db'
         #'../workflow_snakemake/full_length_reads_{sample}.db'
     shell:
-        'anvi-gen-contigs-database -f {input} -o {output}'
+        'anvi-gen-contigs-database -f {input} -o {output}'#; anvi-run-hmms -c {input}'
 
+'''
+rule anvi_run_hmms:
+    input:
+        rules.anvi_gen_contigs_db.output
+    output:
+        dirs_dict['CONTIGS_DB_DIR'] + '/full_length_ref_contigs_hmm.db'
+    shell:
+        'anvi-run-hmms -c {input}'
+'''
 rule anvi_profile:
     input:
         rules.anvi_init_bam.output, 
@@ -180,13 +197,38 @@ rule anvi_profile:
         #'../workflow_snakemake/full_length_reads_{sample}.db'
     output:
         dirs_dict['PROFILE_DIR'] + '/{sample}/PROFILE.db'
+        #anvi_merge_folder = dirs_dict['PROFILE_DIR']
         #'../workflow_snakemake/anvi_bam_{sample}.bam-ANVIO_PROFILE/PROFILE.db'
     params:
         min_contig_length = MIN_CONTIG_LENGTH,
         output_dir = dirs_dict['PROFILE_DIR'] + '/{sample}',
-        sample_name = 'anvi_profile_dobby'
+        sample_name = 'sample_{sample}'
+    threads: 4
     shell:
-        'anvi-profile -i {input[0]} -c {input[1]} -M {params.min_contig_length} -W --output-dir {params.output_dir}' #--sample-name {params.sample_name}'
+        'anvi-profile -i {input[0]} -c {input[1]} -M {params.min_contig_length} -W --output-dir {params.output_dir}'# --sample-name {params.sample_name}'
+
+def input_for_anvi_merge(wildcards):
+    '''
+        Create a dictionary as input for rule anvi_merge
+    '''
+    profiles = expand(dirs_dict['PROFILE_DIR'] + '/{sample}/PROFILE.db', sample=SAMPLES)
+
+    return profiles
+
+rule anvi_merge:
+    input:
+        #dirs_dict['PROFILE_DIR'] + '/*/PROFILE.db', 
+        contigs = rules.anvi_gen_contigs_db.output, 
+        profiles = input_for_anvi_merge
+        #rules.anvi_profile.output.anvi_merge_folder
+    output:
+        profile = dirs_dict['MERGE_DIR'] + '/PROFILE.db',
+        aux = dirs_dict['MERGE_DIR'] + '/AUXILIARY-DATA.h5', 
+        runlog = dirs_dict['MERGE_DIR'] + '/RUNLOG.txt'
+    params:
+        output_dir = dirs_dict['MERGE_DIR']
+    shell:
+        'anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} -W'
 
 '''
 Below, this is not yet implemented, mainly because they are optional for the snakemake workflow and can be dealt with later.

@@ -1,2 +1,3 @@
 sample	file
 HF-M01	../db-trna-profiles/tRNA-HF-M01.db
+HF-M02	../db-trna-profiles/tRNA-HF-M02.db
